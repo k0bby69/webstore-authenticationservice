@@ -5,7 +5,7 @@ const userRoutes = require("./api/user");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const print = console.log;
-const port = process.env.PORT || 10000;
+const port = process.env.PORT || 8001;
 dotenv.config(); // Load environment variables from .env file
 
 const app = express();
