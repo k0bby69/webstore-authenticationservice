@@ -1,44 +1,101 @@
-const express = require("express");
-const cors = require("cors");
-const { CreateChannel, SubscribeMessage } = require("./utils");
-const userRoutes = require("./api/user");
-const mongoose = require("mongoose");
-const dotenv = require("dotenv");
-const print = console.log;
-const port = process.env.PORT || 10000;
-dotenv.config(); // Load environment variables from .env file
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const amqplib = require("amqplib");
+require("dotenv").config();
 
-const app = express();
-
-// CORS configuration to handle preflight and allow only specific origins
-const corsOptions = {
-  origin: process.env.ALLOWED_ORIGIN || ['http://localhost:3000', 'https://multivendorapp-user-service.onrender.com'], // Set to the allowed frontend origin
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],  // You can add more headers if needed
-  credentials: true,  // If you need to pass cookies or headers with cross-origin requests
+module.exports.GeneratePassword = async (password) => {
+  const hash = await bcrypt.hash(password, 8);
+  return hash;
 };
 
-// Use CORS middleware with specific options
-app.use(cors(corsOptions));
+module.exports.ValidatePassword = async (enteredPassword, savedPassword) => {
+  const isPasswordMatch = await bcrypt.compare(enteredPassword, savedPassword);
+  return isPasswordMatch;
+};
 
-app.use(express.json());
-app.use(express.static(__dirname + "/public"));
-
-async function startApp() {
+module.exports.GenerateSignature = async (payload) => {
   try {
-    await mongoose.connect(process.env.DB_URI);
-    print("Connection sauce");
+    return jwt.sign(payload, process.env.JWT_SECRET || "secretKey", {
+      expiresIn: "30d",
+    });
+  } catch (error) {
+    console.error("Error generating signature:", error);
+    throw error;
+  }
+};
 
-    const channel = await CreateChannel();
+module.exports.ValidateSignature = async (req) => {
+  try {
+    const authorizationHeader = req.get("Authorization");
 
-    await userRoutes(app, channel);
+    if (!authorizationHeader) {
+      throw new Error("Authorization header missing");
+    }
 
-    app.listen(port, () => {
-      console.log(`Customer is Listening to Port ${port}`);
+    const token = authorizationHeader.split(" ")[1];
+    if (!token) {
+      throw new Error("Token missing from Authorization header");
+    }
+
+    const payload = jwt.verify(token, process.env.JWT_SECRET || "secretKey");
+    req.user = payload; // Attach user information to the request object
+    return true;
+  } catch (error) {
+    console.error("Error validating signature:", error.message);
+    return false;
+  }
+};
+
+module.exports.FormatData = (data) => {
+  if (data) {
+    return { data };
+  } else {
+    throw new Error("Data Not Found!");
+  }
+};
+
+// Message Broker
+
+module.exports.CreateChannel = async () => {
+  try {
+    const connection = await amqplib.connect(process.env.MESSAGE_BROKER_URL);
+    const channel = await connection.createChannel();
+
+    // Ensure the exchange exists
+    await channel.assertExchange(process.env.EXCHANGE_NAME, "direct", {
+      durable: true,
+    });
+
+    return channel;
+  } catch (err) {
+    console.error("Error creating channel:", err);
+    throw err;
+  }
+};
+
+module.exports.SubscribeMessage = async (channel, service) => {
+  try {
+    const appQueue = await channel.assertQueue(process.env.QUEUE_NAME, {
+      durable: true,
+    });
+
+    channel.bindQueue(
+      appQueue.queue,
+      process.env.EXCHANGE_NAME,
+      process.env.CUSTOMER_BINDING_KEY
+    );
+
+    channel.consume(appQueue.queue, (data) => {
+      try {
+        service.SubscribeEvents(data.content.toString());
+        console.log("Received data:", data.content.toString());
+        channel.ack(data);
+      } catch (consumeError) {
+        console.error("Error processing message:", consumeError);
+      }
     });
   } catch (err) {
-    console.log("Failed to start app:", err);
+    console.error("Error subscribing to messages:", err);
+    throw err;
   }
-}
-
-startApp();
+};
