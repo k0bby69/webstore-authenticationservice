@@ -12,10 +12,22 @@ const app = express();
 
 // CORS configuration to handle preflight and allow only specific origins
 const corsOptions = {
-  origin: process.env.ALLOWED_ORIGIN || ['https://webstore-frontend-9669.onrender.com', 'https://webstore-userservice.onrender.com'], // Set to the allowed frontend origin
+  origin: function (origin, callback) {
+    // Define allowed origins
+    const allowedOrigins = [
+      'https://webstore-frontend-9669.onrender.com', // Production Frontend URL
+      'http://localhost:3000' // Localhost URL (if running locally)
+    ];
+
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],  // You can add more headers if needed
-  credentials: true,  // If you need to pass cookies or headers with cross-origin requests
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 };
 
 // Use CORS middleware with specific options
