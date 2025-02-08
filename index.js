@@ -11,13 +11,13 @@ dotenv.config(); // Load environment variables from .env file
 const app = express();
 
 // CORS configuration to handle preflight and allow only specific origins
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Define allowed origins
-    const allowedOrigins = [
-      'https://webstore-frontend-9669.onrender.com', // Production Frontend URL
-      'http://localhost:3000' // Localhost URL (if running locally)
-    ];
+// const corsOptions = {
+//   origin: function (origin, callback) {
+//     // Define allowed origins
+//     const allowedOrigins = [
+//       'https://webstore-frontend-9669.onrender.com', // Production Frontend URL
+//       'http://localhost:3000' // Localhost URL (if running locally)
+//     ];
 
     if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
       callback(null, true);
