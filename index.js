@@ -5,18 +5,15 @@ const userRoutes = require("./api/user");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const print = console.log;
-const port = process.env.PORT || 8001
-dotenv.config();
+const port = process.env.PORT || 8001;
+dotenv.config(); // Load environment variables from .env file
 
 const app = express();
+
+// Allow all origins by passing no options
+app.use(cors());
+
 app.use(express.json());
-// app.use(cors({
-//   origin: ['http://localhost:3000', 'https://multivendorplatform-shopping-frontend.onrender.com'],
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//   allowedHeaders: ['Content-Type', 'Authorization']
-// }));
-app.use(cors())
 app.use(express.static(__dirname + "/public"));
 
 async function startApp() {
