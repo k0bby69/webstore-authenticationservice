@@ -20,10 +20,12 @@ userRoutes = (app, channel) => {
 
   app.post("/login", async (req, res, next) => {
     const { email, password } = req.body;
+    console.log(email);
+    console.log(password);
 
     const { data } = await service.SignIn({ email, password });
-
-    res.json(data);
+    
+    return res.json(data);
   });
 
   app.post("/profile", auth, async (req, res, next) => {
